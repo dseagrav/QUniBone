@@ -1,0 +1,14 @@
+# Ignore files that have a dot in them
+.*
+# Emacs backup files
+*~
+# Directories created by building
+10.01_base/4_deploy_u/
+10.03_app_demo/4_deploy
+10.03_app_demo/4_deploy_u/
+# Platform env file
+qunibone-platform.env
+# Unrelated files in my home directory on unibone-dev
+SCRATCH.PAD
+am335x_pru_package/
+images/

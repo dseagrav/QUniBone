@@ -32,5 +32,7 @@ make
 cd ~
 
 echo "To run binary, call"
-echo "10.03_app_demo/4_deploy/demo"
+echo -n "10.03_app_demo/4_deploy"
+echo -n $QUNIBONE_PLATFORM_SUFFIX
+echo "/demo"
 
