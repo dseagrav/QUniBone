@@ -6,6 +6,8 @@
 10.01_base/4_deploy_u/
 10.03_app_demo/4_deploy
 10.03_app_demo/4_deploy_u/
+# Directories from the sdcard image
+10.03_app_demo/5_applications/
 # Platform env file
 qunibone-platform.env
 # Residue from the unibone sdcard image
