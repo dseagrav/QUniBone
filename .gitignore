@@ -8,6 +8,22 @@
 10.03_app_demo/4_deploy_u/
 # Platform env file
 qunibone-platform.env
+# Residue from the unibone sdcard image
+211BSD_du0_44.sh
+autostart.sh
+beta.tar.gz
+cape.eeprom
+cpu20_*.sh
+lsx_rx0.sh
+m9312+xxdp_dl0.sh
+master.tar.gz
+memory.sh
+mini-unix_dk0_05.sh
+rsx11m*.sh
+rt11*.sh
+unix*.sh
+xxdp*.sh
+zkma.sh
 # Unrelated files in my home directory on unibone-dev
 SCRATCH.PAD
 am335x_pru_package/
