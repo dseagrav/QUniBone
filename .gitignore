@@ -11,7 +11,7 @@
 # Platform env file
 qunibone-platform.env
 # Residue from the unibone sdcard image
-211BSD_du0_44.sh
+2*BSD*.sh
 autostart.sh
 beta.tar.gz
 cape.eeprom
@@ -25,6 +25,7 @@ rsx11m*.sh
 rt11*.sh
 unix*.sh
 xxdp*.sh
+rsts*.sh
 zkma.sh
 # Unrelated files in my home directory on unibone-dev
 SCRATCH.PAD
