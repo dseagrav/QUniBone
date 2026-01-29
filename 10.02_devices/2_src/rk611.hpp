@@ -9,7 +9,23 @@
 #define _RK611_HPP_
 
 #include "qunibusdevice.hpp"
+#include "storagecontroller.hpp"
 #include "rk067.hpp"
+
+// Drive function codes
+#define RK067_SELECT_DRIVE 0
+#define RK067_PACK_ACKNOWLEDGE 1
+#define RK067_DRIVE_CLEAR 2
+#define RK067_UNLOAD 3
+#define RK067_START_SPINDLE 4
+#define RK067_RECALIBRATE 5
+#define RK067_OFFSET 6
+#define RK067_SEEK 7
+#define RK067_READ_DATA 8
+#define RK067_WRITE_DATA 9
+#define RK067_READ_HEADER 10
+#define RK067_WRITE_HEADER 11
+#define RK067_WRITE_CHECK 12
 
 typedef union {
     uint16_t word;
@@ -21,9 +37,9 @@ typedef union {
 	uint16_t IE:1;
 	uint16_t RDY:1;
 	uint16_t BA:2;
-	uint16_t CDT:1;
+	uint16_t CDT:1; // 0 = RK06, 1 = RK07
 	uint16_t CT0:1;
-	uint16_t CFMT:1;
+	uint16_t CFMT:1; // 0 = 22 sector (16-bit) mode, 1 = 20 sector (18-bit) mode.
 	uint16_t DCT_PAR:1;
 	uint16_t DI:1;
 	uint16_t CERR:1; // OCLR when written
@@ -94,9 +110,9 @@ typedef union {
 	uint16_t DDT:1;
 	uint16_t _unused_9_10:2;
 	uint16_t WRL:1;
-	uint16_t _unused_12:2;
+	uint16_t _unused_12:1;
 	uint16_t PIP:1;
-	uint16_t SDA:1;
+	uint16_t CDA:1;
 	uint16_t SVAL:1;
     } __attribute__((packed));
 } RKDS_REG;
@@ -113,7 +129,7 @@ typedef union {
 	uint16_t DTYE:1;
 	uint16_t ECH:1;
 	uint16_t BSE:1;
-	uint16_t HVRC:1;
+	uint16_t HRVC:1;
 	uint16_t COE:1;
 	uint16_t IDAE:1;
 	uint16_t WLE:1;
@@ -185,6 +201,21 @@ typedef union {
 typedef union {
     uint16_t word;
     uint8_t byte[2];
+    struct {
+	uint16_t DS:3;
+	uint16_t RELEASE:1;
+	uint16_t SEEK_CMD:1;
+	uint16_t RECAL_CMD:1;
+	uint16_t START_SPINDLE_CMD:1;
+	uint16_t RETURN_TO_CENTERLINE:1;
+	uint16_t DRIVE_CLEAR:1;
+	uint16_t FORMAT:1;
+	uint16_t SET_MEDIUM_OFFLINE:1;
+	uint16_t SET_VOLUME_VALID:1;
+	uint16_t HEAD_SELECT:2;
+	uint16_t RESERVED:1;
+	uint16_t PARITY:1;
+    } __attribute__((packed));
 } RKMR2_REG;
 
 typedef union {
@@ -192,12 +223,13 @@ typedef union {
     uint8_t byte[2];
 } RKMR3_REG;
 
-class rk611_c: public qunibusdevice_c {
+class rk611_c: public storagecontroller_c {
 private:
 
     qunibusdevice_register_t *UBR[16];
     dma_request_c dma_request = dma_request_c(this);
     intr_request_c intr_request = intr_request_c(this);
+    rk067_c *drv[8] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 
     RKCS1_REG RKCS1;
     RKWC_REG RKWC;
@@ -220,21 +252,39 @@ private:
     int silo_level;
     pthread_mutex_t silo_mutex = PTHREAD_MUTEX_INITIALIZER;
     RKDB_REG SILO[66]; // The Silo plus its input and output buffers
+    uint8_t Sector[512];
+
+    bool drive_selected;
+    int selected_drive;
+
+    int worker_active;
+    int worker_abort;
+    int worker_function;
+    int worker_unit;
+    unsigned worker_offset;
 
     void controller_clear(int init);
     void subsystem_clear(int init);
     bool silo_push(uint16_t *data);
     bool silo_pop(uint16_t *data);
+    void handle_mr1_write(int hi,int lo,uint16_t nval);
+    void handle_go_set();
+    void advance_io_op();
 
 public:
     rk611_c();
     ~rk611_c();
 
+    void status_update(int unit,bool forced);
+    void raise_attention(int unit);
+    void clear_attention(int unit);
+    void op_complete_strobe(bool winner);
     bool on_param_changed(parameter_c *param) override;
     void on_after_register_access(qunibusdevice_register_t *device_reg, uint8_t unibus_control, DATO_ACCESS access)
 	override;
     void on_power_changed(signal_edge_enum aclo_edge, signal_edge_enum dclo_edge) override;
     void on_init_changed(void) override;
+    void on_drive_status_changed(storagedrive_c *drive);
     void worker(unsigned instance) override;
 };
 
