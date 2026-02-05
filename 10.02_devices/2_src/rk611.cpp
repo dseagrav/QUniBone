@@ -159,10 +159,13 @@ rk611_c::rk611_c() : storagecontroller_c(){
     drive_selected = false;
     selected_drive = 0;
 
-    // Create a drive
-    drv[0] = new rk067_c(this,0);
-    storagedrives.push_back(drv[0]);
-
+    // Create drives
+    int x = 0;
+    while(x < 8){
+	drv[x] = new rk067_c(this,x);
+	storagedrives.push_back(drv[x]);
+	x++;
+    }
 }
 
 rk611_c::~rk611_c(){
@@ -186,6 +189,11 @@ void rk611_c::controller_clear(int init){
     RKBA.dword = 0;
     RKDA.word = 0;
     RKCS2.word = 0000100; // Set IR
+    if(drive_selected){
+	drv[selected_drive]->deselect();
+	drive_selected = false;
+	selected_drive = 0;
+    }
     RKDS.word = 0;
     RKER.word = 0;
     RKAS.word = 0;
@@ -664,6 +672,13 @@ void rk611_c::handle_go_set(){
 	set_register_dati_value(UBR[4],RKCS2.word,"update_RKCS2");
 	RKCS1.CERR = 1;
     }else{
+	// If no drive is selected and this is not a select drive command, select this drive
+	if(drive_selected == false && RKCS1.F != RK067_SELECT_DRIVE){
+	    // INFO("Command without drive selected? Selecting drive %d",RKCS2.DS);
+	    drv[RKCS2.DS]->select();
+	    selected_drive = RKCS2.DS;
+	    drive_selected = true;
+	}
 	// Check type
 	RKER.DTYE = (drv[RKCS2.DS]->Status_A0.DRIVE_TYPE != RKCS1.CDT);
 	if(RKER.DTYE != 0){
@@ -800,6 +815,7 @@ void rk611_c::on_after_register_access(qunibusdevice_register_t *device_reg, uin
     switch(device_reg->index){
 
     case 0: // RKCS1
+	qunibusadapter->cancel_INTR(intr_request); // Clear this, only re-raise if needed
 	switch(access){
 	case DATO_WORD:
 	    // if CCLR is set, do it.
@@ -874,6 +890,7 @@ void rk611_c::on_after_register_access(qunibusdevice_register_t *device_reg, uin
 	case DATO_BYTEH:
 	    // if CCLR is set, do it.
 	    if((wrval.byte[1]&0200) != 0){
+		INFO("CCLR");
 		controller_clear(0);
 		return;
 	    }else{
@@ -935,6 +952,7 @@ void rk611_c::on_after_register_access(qunibusdevice_register_t *device_reg, uin
 	break;
 
     case 4: // RKCS2
+	RKDS.SVAL = 0; // Writing here clears SVAL
 	switch(access){
 	case DATO_WORD:
 	case DATO_BYTEL:
@@ -943,6 +961,25 @@ void rk611_c::on_after_register_access(qunibusdevice_register_t *device_reg, uin
 		// Yes
 		subsystem_clear(0);
 	    }else{
+		// Are we changing DS?
+		if(RKCS2.DS != (wrval.byte[0]&07)){
+		    // INFO("RKCS2.DS changed from %d to %d",RKCS2.DS,(wrval.byte[0]&07));
+		    // Yes, deselect old drive if selected
+		    if(drive_selected != false){
+			drv[selected_drive]->deselect();
+			drive_selected = false;
+		    }
+		    // Does the new drive exist?
+		    if(drv[(wrval.byte[0]&07)] != NULL && drv[(wrval.byte[0]&07)]->enabled.value == true){
+			// Yes, select it
+			selected_drive = (wrval.byte[0]&07);
+			drv[selected_drive]->select();
+			drive_selected = true;
+			// Get status update
+			status_update(drive_selected,true);
+			RKDS.SVAL = 1;
+		    }
+		}
 		RKCS2.byte[0] &= 0300;
 		RKCS2.byte[0] |= (wrval.byte[0]&037);
 	    }
@@ -951,7 +988,6 @@ void rk611_c::on_after_register_access(qunibusdevice_register_t *device_reg, uin
 	    // Nothing to do!
 	    break;
 	}
-	RKDS.SVAL = 0; // Writing here clears SVAL
 	set_register_dati_value(UBR[5],RKDS.word,"update_RKDS");
 	set_register_dati_value(UBR[4],RKCS2.word,"update_RKCS2");
 	break;

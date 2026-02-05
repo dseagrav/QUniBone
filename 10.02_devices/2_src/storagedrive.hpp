@@ -44,7 +44,7 @@
 
 enum class drive_type_e {
     NONE = 0,
-    TU58, RP0456, RK035, RL01, RL02, RK067, RP023, RM,
+    TU58, RP0456, RK035, RL01, RL02, RK06, RK07, RP023, RM,
     RS, TU56, RX01, RX02, RF,
     // from here only MSCP drives
     RX50, RX33, RD51, RD31, RC25, RC25F,
@@ -133,6 +133,7 @@ private:
 public:
     bool image_open(bool create) ;
     void image_close(void) ;
+    bool image_not_null(void) ;
     bool image_is_open(void) ;
     bool image_is_readonly() ;
     bool image_truncate(void) ;

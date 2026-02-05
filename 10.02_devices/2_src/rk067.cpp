@@ -49,7 +49,7 @@ rk067_c::rk067_c(rk611_c *_controller, int _unit): storagedrive_c(_controller){
     Status_B1.MESSAGE_ID = 1;
     Status_B2.MESSAGE_ID = 2;
     Status_B3.MESSAGE_ID = 3;
-    set_type(drive_type_e::RK07);
+    set_type(drive_type_e::RK06);
 }
 
 rk067_c::~rk067_c(){
@@ -148,6 +148,7 @@ void rk067_c::on_init_changed(int init){
     Status_B1.LIMIT_DETECT_ON_SEEK = 0;
     Status_B0.FAULT = 0;
     fault_lamp.value = false;
+    port_a_lamp.value = false;
 }
 
 void rk067_c::on_init_changed(void){
@@ -158,10 +159,20 @@ bool rk067_c::is_selected(){
     return(port_a_lamp.value);
 }
 
+void rk067_c::select(){
+    // Selected by controller logic, not command
+    if(port_a_lamp.value != true){
+	port_a_lamp.value = true;
+	// INFO("Unit %d selected",unit);
+    }
+}
+
 void rk067_c::deselect(){
-    // Deselected by controller
-    port_a_lamp.value = false;
-    INFO("Unit %d deselected",unit);
+    // Deselected by controller logic, not command
+    if(port_a_lamp.value != false){
+	port_a_lamp.value = false;
+	// INFO("Unit %d deselected",unit);
+    }
 }
 
 bool rk067_c::handle_command(int fcn,uint16_t msg_a,uint16_t msg_b,int bad_parity){
@@ -225,7 +236,7 @@ bool rk067_c::handle_command(int fcn,uint16_t msg_a,uint16_t msg_b,int bad_parit
 	// Set Volume Valid, even if we are spun down, etc.
 	Status_A0.VOLUME_VALID = 1;
 	host->op_complete_strobe(true);
-	if(port_a_lamp.value){ host->status_update(unit,false); }
+	if(port_a_lamp.value){ host->status_update(unit,false);	}
 	break;
 
     case RK067_UNLOAD:

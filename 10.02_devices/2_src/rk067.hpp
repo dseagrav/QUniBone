@@ -226,6 +226,7 @@ public:
 
     // Functions
     bool is_selected();
+    void select();
     void deselect();
     bool handle_command(int fcn,uint16_t msg_a,uint16_t msg_b,int bad_parity);
     void set_type(enum drive_type_e _drivetype);

@@ -180,6 +180,11 @@ void storagedrive_c::image_close(void)
     image->close() ;
 }
 
+bool storagedrive_c::image_not_null(void) 
+{
+    return(image != nullptr) ;
+}
+
 bool storagedrive_c::image_is_open(void) 
 {
     if (image == nullptr)
