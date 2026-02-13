@@ -677,7 +677,7 @@ void rk067_c::worker(unsigned instance){
 		    if(port_a_lamp.value){ host->status_update(unit,false); }
 		    host->raise_attention(unit);
 		    seek_pending = false;
-		    INFO("Seek complete, at cylinder %d",Status_B2.CYLINDER);
+		    // INFO("Seek complete, at cylinder %d",Status_B2.CYLINDER);
 		}
 	    }else{
 		// If heads are settled, update sector count

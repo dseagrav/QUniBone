@@ -25,6 +25,9 @@
  27-Feb-2023  JD/JH   RS11/RF11 new. KE11 EAE for UNIBUS.
  */
 
+// Uncomment this for 800 BPI TM11-B tape instead of 1600 BPI TS11 tape.
+// #define USE_800BPI_TAPE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,6 +64,15 @@
 #include "uda.hpp"
 #include "dl11w.hpp"
 #include "ke11.hpp"
+#include "netcom.hpp"
+#include "dz11.hpp"
+#include "lp11.hpp"
+#include "rk611.hpp"
+#ifndef USE_800BPI_TAPE
+#include "ts11.hpp"
+#else
+#include "tm11.hpp"
+#endif
 #if defined(UNIBUS)
 #include "m9312.hpp"
 #endif
@@ -235,7 +247,21 @@ void application_c::menu_devices(const char *menu_code, bool with_emulated_CPU)
     //	//demo_regs.install();
     //	//demo_regs.worker_start();
 
+    netcom_c *nc_0 = new netcom_c(0);
+    dz11_c *DZ_0 = new dz11_c(0);
+    dz11_c *DZ_1 = new dz11_c(1);
 
+    // Wire netcom to DZ11s.
+    nc_0->attach_mux(DZ_0);
+    nc_0->attach_mux(DZ_1);
+
+    lp11_c *LP11 = new lp11_c();
+    rk611_c *RK611 = new rk611_c();
+#ifndef USE_800BPI_TAPE
+    ts11_c *TS11 = new ts11_c();
+#else
+    tm11_c *TM11 = new tm11_c();
+#endif
 
 #if defined(UNIBUS)
     m9312_c *m9312 = new m9312_c();
@@ -656,7 +682,33 @@ void application_c::menu_devices(const char *menu_code, bool with_emulated_CPU)
     delete m9312 ;
     KE11A->enabled.set(false);
     delete KE11A;
+#endif
 
+    // Detach netcom from DZ11s
+    nc_0->detach_mux(DZ_1);
+    nc_0->detach_mux(DZ_0);
+
+    nc_0->enabled.set(false);
+    delete nc_0;
+
+    DZ_1->enabled.set(false);
+    delete DZ_1;
+
+    DZ_0->enabled.set(false);
+    delete DZ_0;
+
+    LP11->enabled.set(false);
+    delete LP11;
+
+    RK611->enabled.set(false);
+    delete RK611;
+
+#ifndef USE_800BPI_TAPE
+    TS11->enabled.set(false);
+    delete TS11;
+#else
+    TM11->enabled.set(false);
+    delete TM11;
 #endif
 
     RX11->enabled.set(false) ;

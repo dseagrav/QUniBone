@@ -67,7 +67,62 @@ public:
 
 } ;
 
+// a linear sequence containing the byte stream, no higher level format assumed.
+// Also no cache.
+class storageimage_rawfile_c: public storageimage_base_c {
+private:
+    bool readonly ;
+    std::fstream f; // image file
+    std::string image_fname ;
 
+public:
+    storageimage_rawfile_c(std::string _image_fname) {
+        image_fname = _image_fname ;
+    }
+
+    // nothing to free
+    virtual ~storageimage_rawfile_c() override {
+        // handle recreation via param change with open images
+        close() ;
+    }
+
+    virtual bool is_readonly() override {
+        return readonly ;
+    }
+    virtual bool open(storagedrive_c *drive, bool create) override;
+    virtual bool is_open(void) override;
+    virtual bool is_eof(void);
+    virtual bool truncate(void) override;
+    virtual signed read(uint8_t *buffer, unsigned len);
+    virtual signed write(uint8_t *buffer, unsigned len);
+    virtual uint64_t size(void) override;
+    virtual bool setpos(uint64_t position);
+    virtual uint64_t getpos();
+    virtual void close(void) override;
+    // These aren't used and have to be here to make the compiler happy
+    virtual void read(uint8_t *buffer, uint64_t position, unsigned len) override {
+	UNUSED(buffer);
+	UNUSED(position);
+	UNUSED(len);
+    }
+    virtual void write(uint8_t *buffer, uint64_t position, unsigned len) override {
+	UNUSED(buffer);
+	UNUSED(position);
+	UNUSED(len);
+    }
+    virtual void get_bytes(byte_buffer_c *byte_buffer, uint64_t byte_offset, uint32_t data_size) override {
+	UNUSED(byte_buffer);
+	UNUSED(byte_offset);
+	UNUSED(data_size);
+    }
+    virtual void set_bytes(byte_buffer_c *byte_buffer, uint64_t byte_offset) override {
+	UNUSED(byte_buffer);
+	UNUSED(byte_offset);
+    }
+    virtual void save_to_file(std::string host_filename) override {
+	UNUSED(host_filename);
+    }
+};
 
 // a monolitic binary disk file containing the byte stream, SimH compatible
 class storageimage_binfile_c: public storageimage_base_c {

@@ -63,6 +63,7 @@ static void device_worker_pthread_cleanup_handler(void *context)
 	INFO("%s::worker(%d) terminated.", device->name.value.c_str(), worker_instance->instance);
 //	printf("cleanup for device %s\n", device->name.value.c_str()) ;
 #undef this
+        device->on_worker_terminated(worker_instance->instance); // Tell the device about it in case it cares
 }
 
 static void *device_worker_pthread_wrapper(void *context) 
@@ -349,6 +350,7 @@ void device_c::workers_stop(void)
 		// !! No problem for compiles build on BBB itself.
 		status = pthread_join(worker_instance->pthread, NULL);
 		if (status != 0) {
+		        if(status == EDEADLK){ return; } // Bail out if we are terminating ourselves.
 			FATAL("Failed to join worker_pthread with status = %d", status);
 		}
 	}

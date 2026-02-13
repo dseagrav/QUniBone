@@ -121,6 +121,15 @@ OBJECTS = $(OBJDIR)/application.o	\
 	$(OBJDIR)/dl11w.o \
 	$(OBJDIR)/m9312.o \
     $(OBJDIR)/ke11.o \
+    $(OBJDIR)/netcom.o \
+    $(OBJDIR)/dz11.o \
+    $(OBJDIR)/lp11.o \
+    $(OBJDIR)/rk611.o \
+    $(OBJDIR)/rk067.o \
+    $(OBJDIR)/tm11.o \
+    $(OBJDIR)/ts11.o \
+    $(OBJDIR)/ts11_drive.o \
+    $(OBJDIR)/parity.o \
 	$(OBJDIR)/storageimage.o	\
     $(OBJDIR)/storagedrive.o	\
     $(OBJDIR)/storagecontroller.o	\
@@ -137,6 +146,8 @@ OBJECTS = $(OBJDIR)/application.o	\
 	$(OBJDIR)/blinkenbone/blinkenlight_panels.o \
 	$(OBJDIR)/blinkenbone/rpc_blinkenlight_api_clnt.o \
 	$(OBJDIR)/blinkenbone/rpc_blinkenlight_api_xdr.o \
+    $(OBJDIR)/tapedrive.o	\
+    $(OBJDIR)/tapecontroller.o	\
     $(OBJDIR)/demo_io.o	\
     $(OBJDIR)/testcontroller.o	\
     $(OBJDIR)/device.o	\
@@ -314,6 +325,33 @@ $(OBJDIR)/m9312.o :  $(DEVICE_SRC_DIR)/m9312.cpp $(DEVICE_SRC_DIR)/m9312.hpp
 $(OBJDIR)/ke11.o :   $(DEVICE_SRC_DIR)/ke11.cpp $(DEVICE_SRC_DIR)/ke11.hpp
 	$(CC) $(CCFLAGS) $< -o $@
 
+$(OBJDIR)/netcom.o :  $(DEVICE_SRC_DIR)/netcom.cpp $(DEVICE_SRC_DIR)/netcom.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
+$(OBJDIR)/dz11.o :  $(DEVICE_SRC_DIR)/dz11.cpp $(DEVICE_SRC_DIR)/dz11.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
+$(OBJDIR)/lp11.o :  $(DEVICE_SRC_DIR)/lp11.cpp $(DEVICE_SRC_DIR)/lp11.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
+$(OBJDIR)/rk611.o :  $(DEVICE_SRC_DIR)/rk611.cpp $(DEVICE_SRC_DIR)/rk611.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
+$(OBJDIR)/rk067.o :  $(DEVICE_SRC_DIR)/rk067.cpp $(DEVICE_SRC_DIR)/rk067.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
+$(OBJDIR)/tm11.o :  $(DEVICE_SRC_DIR)/tm11.cpp $(DEVICE_SRC_DIR)/tm11.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
+$(OBJDIR)/ts11.o :  $(DEVICE_SRC_DIR)/ts11.cpp $(DEVICE_SRC_DIR)/ts11.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
+$(OBJDIR)/ts11_drive.o :  $(DEVICE_SRC_DIR)/ts11_drive.cpp $(DEVICE_SRC_DIR)/ts11_drive.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
+$(OBJDIR)/parity.o :  $(DEVICE_SRC_DIR)/parity.cpp $(DEVICE_SRC_DIR)/parity.hpp
+	$(CC) $(CCFLAGS) -Wno-missing-field-initializers $< -o $@
+
 $(OBJDIR)/storageimage.o :  $(DEVICE_SRC_DIR)/storageimage.cpp $(DEVICE_SRC_DIR)/storageimage.hpp
 	$(CC) $(CCFLAGS) $< -o $@
 
@@ -373,6 +411,12 @@ $(OBJDIR)/blinkenbone/rpc_blinkenlight_api_clnt.o :  $(BLINKENBONE_SRC_DIR)/rpc_
 
 $(OBJDIR)/blinkenbone/rpc_blinkenlight_api_xdr.o :  $(BLINKENBONE_SRC_DIR)/rpc_blinkenlight_api_xdr.cpp $(BLINKENBONE_SRC_DIR)/blinkenlight_api_client.h
 	mkdir -p $(OBJDIR)/blinkenbone
+	$(CC) $(CCFLAGS) $< -o $@
+
+$(OBJDIR)/tapedrive.o :  $(DEVICE_SRC_DIR)/tapedrive.cpp $(DEVICE_SRC_DIR)/tapedrive.hpp
+	$(CC) $(CCFLAGS) $< -o $@
+
+$(OBJDIR)/tapecontroller.o :  $(DEVICE_SRC_DIR)/tapecontroller.cpp $(DEVICE_SRC_DIR)/tapecontroller.hpp
 	$(CC) $(CCFLAGS) $< -o $@
 
 $(OBJDIR)/demo_io.o :  $(DEVICE_SRC_DIR)/demo_io.cpp $(DEVICE_SRC_DIR)/demo_io.hpp

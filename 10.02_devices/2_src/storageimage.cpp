@@ -67,7 +67,6 @@ bool storageimage_base_c::is_zero(uint64_t position, unsigned len)
     return result ;
 }
 
-
 // http://www.cplusplus.com/doc/tutorial/files/
 
 // open a file, if possible.
@@ -284,6 +283,137 @@ void storageimage_binfile_c::save_to_file(std::string _host_filename)
     }
 }
 
+// Abbreviated interface for raw file implementation, largely copied from above and cut down
+bool storageimage_rawfile_c::open(storagedrive_c *_drive, bool create)
+{
+    UNUSED(_drive);
+    // 1st: if file not exists, try to unzip it from <image_fname>.gz
+    int retries = 2 ;
+    while (retries > 0) {
+        readonly = false;
+        if (is_open())
+            close(); // after RL11 INIT
+        if (image_fname.empty())
+            return true ; // ! is_open
+        f.open(image_fname, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
+        if (f.is_open())
+            return true;
+
+        // is readonly? try open for read only
+
+        // try again readonly
+        f.open(image_fname, std::ios::in | std::ios::binary | std::ios::ate);
+        if (f.is_open()) {
+            readonly = true;
+            return true;
+        }
+
+        retries-- ;
+        if (retries > 0) {
+            // file could not be opened, neither rw nor read only
+            // try to unzip, then retry opening
+            std::string compressed_image_fname = image_fname + ".gz" ;
+            if (FILE *fz = fopen(compressed_image_fname.c_str(), "r")) {
+                fclose(fz);
+                std::string uncompress_cmd = "zcat " + compressed_image_fname + " >" + image_fname ;
+                printf("Only compressed image file %s found, expanding \"%s\" ...\n", image_fname.c_str(), uncompress_cmd.c_str()) ;
+                int ret = system(uncompress_cmd.c_str()) ;
+                if (ret != 0) {
+                    printf(" FAILED!\n") ;
+                    retries = 0 ; // not again
+                } else
+                    printf("... complete.\n") ;
+
+            } else
+                retries = 0 ; // not again
+        }
+    }
+
+    // definitely no image file neither plain nor zipped
+    // create one?
+    if (!create)
+        return false;
+
+    // try to create
+    // https://stackoverflow.com/questions/17260394/fstream-not-creating-new-file/18160837
+    f.open(image_fname, std::ios::out);
+    f.close();
+    f.open(image_fname, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
+    if (f.is_open()) {
+        INFO("Created empty image file %s.", image_fname.c_str()) ;
+        return true ;
+    } else {
+        INFO("Creating empty image file %s FAILED.", image_fname.c_str()) ;
+        return false;
+    }
+}
+
+bool storageimage_rawfile_c::is_open()
+{
+    return f.is_open();
+}
+
+bool storageimage_rawfile_c::is_eof()
+{
+    return f.eof();
+}
+
+// set file size to 0.
+// It would be a lot more useful if this did what ftruncate() does, but the standard says no.
+bool storageimage_rawfile_c::truncate()
+{
+    assert(is_open());
+    assert(!readonly); // caller must take care
+
+    f.close();
+    // reopen with "trunc" option
+    f.open(image_fname, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+    return  f.is_open() ;
+}
+
+uint64_t storageimage_rawfile_c::size(void)
+{
+    f.seekp(0, std::ios::end);
+    return f.tellp();
+}
+
+void storageimage_rawfile_c::close(void)
+{
+    if (!is_open())
+	return ;
+    f.close();
+    readonly = false;
+}
+
+signed storageimage_rawfile_c::read(uint8_t *buffer, unsigned len){
+    assert(is_open());
+    assert(buffer != nullptr);
+    assert(len);
+    f.read((char *)buffer, len);
+    if(f.fail()){ printf("f.read() indicated failure!\n"); }
+    return(f.gcount());
+}
+
+signed storageimage_rawfile_c::write(uint8_t *buffer, unsigned len){
+    assert(buffer);
+    assert(is_open());
+    assert(!readonly);
+    uint64_t starting_position = f.tellp();
+    f.write((const char*)buffer, len);
+    if(f.fail()){ printf("f.write() indicated failure!\n"); }else{ f.flush(); }
+    uint64_t ending_position = f.tellp();
+    return(ending_position-starting_position);
+}
+
+bool storageimage_rawfile_c::setpos(uint64_t position){
+    f.clear(); // Clobber fail bit if there is one
+    f.seekg(position);
+    if(f.fail()){ return(false); }else{ return(true); }
+}
+
+uint64_t storageimage_rawfile_c::getpos(){
+    return f.tellp();
+}
 
 
 // result: OK= true, else false

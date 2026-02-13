@@ -141,6 +141,11 @@ public:
 
 	std::vector<device_worker_c> workers;
 
+        // default worker cleanup function for devices without need.
+        virtual void on_worker_terminated(unsigned instance) {
+	        UNUSED(instance);
+        }
+
 	// default background worker function for devices without need.
 	virtual void worker(unsigned instance) {
 		UNUSED(instance);

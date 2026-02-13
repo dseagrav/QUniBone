@@ -36,6 +36,7 @@ RL0102_c::RL0102_c(storagecontroller_c *_controller) :    storagedrive_c(_contro
 {
     log_label = "RL0102"; // to be overwritten by RL11 on create
     status_word = 0;
+    type_name.readonly = false;
     set_type(drive_type_e::RL02); // default
     runstop_button.value = false; // force user to load file assume drive is LOAD
     fault_lamp.value = false;
