@@ -124,7 +124,9 @@ public:
     void on_init_changed(void) override;
     void lpr_write(uint16_t val);
     void transmit(uint8_t data);
+    std::string get_name() override;
     bool recv_data_from_nc(uint8_t data) override;
+    bool recv_break_from_nc() override;
     void worker(unsigned instance) override;
     void transmit_worker(void);
 };
@@ -174,6 +176,7 @@ public:
 	override;
     void on_power_changed(signal_edge_enum aclo_edge, signal_edge_enum dclo_edge) override;
     void on_init_changed(void) override;
+    std::string get_name() override;
     int find_free_line() override;
     netcom_line_c *get_slu(int ln) override;
     bool seize_line(int ln,netcon_c *conn) override;

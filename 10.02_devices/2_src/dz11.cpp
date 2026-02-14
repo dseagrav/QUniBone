@@ -454,11 +454,20 @@ void dz11_slu_c::transmit(uint8_t data){
     }
 }
 
+std::string dz11_slu_c::get_name(){
+    return(name.value);
+}
+
 bool dz11_slu_c::recv_data_from_nc(uint8_t data){
     // Take the time even if the silo is busy etc
     timeout_c rx_timeout;
     rx_timeout.wait_us(line_rate);
     return(ctl->receive_data_on_line(line,(data&line_mask)));
+}
+
+bool dz11_slu_c::recv_break_from_nc(){
+    // TBI
+    return(true);
 }
 
 void dz11_c::on_after_register_access(qunibusdevice_register_t *device_reg, uint8_t unibus_control, DATO_ACCESS access){
@@ -627,6 +636,10 @@ void dz11_c::on_after_register_access(qunibusdevice_register_t *device_reg, uint
 	break;
 
     }
+}
+
+std::string dz11_c::get_name(){
+    return(name.value);
 }
 
 int dz11_c::find_free_line(){

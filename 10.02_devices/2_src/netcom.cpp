@@ -22,9 +22,20 @@ static const char netcon_tn_greeting[NCTN_GREETING_LENGTH] = {
     TN_IAC,TN_DO_NOT,TN_OPT_ECHO,
     TN_IAC,TN_WILL_NOT,TN_OPT_LINE_MODE,
     TN_IAC,TN_DO_NOT,TN_OPT_LINE_MODE};
-
 // Telnet timing mark
 static const char netcon_tn_timing_mark[3] = {TN_IAC,TN_WILL,TN_OPT_TIMING_MARK};
+// Telnet BREAK
+static const char netcon_tn_break[2] = {TN_IAC,TN_BREAK};
+// パッド外して素直になれ！
+static const char netcon_tn_dont_pad[3] = {TN_IAC,TN_DO_NOT,TN_OPT_X3_PAD};
+// Don't NAWS
+static const char netcon_tn_dont_naws[3] = {TN_IAC,TN_DO_NOT,TN_OPT_NAWS};
+// Don't TERMINAL-SPEED
+static const char netcon_tn_dont_speed[3] = {TN_IAC,TN_DO_NOT,TN_OPT_TERMINAL_SPEED};
+// Don't negotiate environment
+static const char netcon_tn_dont_eo[3] = {TN_IAC,TN_DO_NOT,TN_OPT_ENVIRONMENT};
+// The blue ones go slower.
+static const char netcon_tn_dont_neo[3] = {TN_IAC,TN_DO_NOT,TN_OPT_NEO};
 
 netcon_c::netcon_c(netcom_c *_ctl,int _fd,struct sockaddr_in *_sa,netcom_mux_c *_mux,netcom_line_c *_slu,int _line){
     ctl = _ctl;
@@ -97,11 +108,27 @@ bool netcon_c::transmit_data(uint8_t data){
     return(true);
 }
 
+bool netcon_c::transmit_break(){
+    if(fd <= 0){ return(false); }
+    ssize_t res;
+    if(!ctl->raw_mode.value){
+	res = write(fd,&netcon_tn_break,2);
+	if(res != 2){
+	    ERROR("write(): %s",strerror(errno));
+	    close(fd);
+	    fd = 0;
+	    ctl->on_netcon_closed(this);
+	}
+    }
+    return(true);
+}
+
 void netcon_c::worker(unsigned instance){
     UNUSED(instance);
     uint8_t incoming_byte;
     ssize_t res;
     // Only one. Listen on the connection and handle the input.
+    INFO("Connected to %s",slu->get_name().c_str());
     worker_init_realtime_priority(none_rt); // Does not need to be realtime
     while(!workers_terminate && fd > 0){
 	timeout_c retry_timeout;
@@ -156,6 +183,7 @@ void netcon_c::worker(unsigned instance){
 			bool win = slu->recv_data_from_nc(incoming_byte);
 			if(win || retry_timeout.reached()){ break; }
 		    }
+		    protocol_state = NCPS_MAIN;
 		    break;
 
 		case TN_WILL:
@@ -180,7 +208,12 @@ void netcon_c::worker(unsigned instance){
 		    break;
 
 		case TN_BREAK:
-		    // Tell the MUX about this
+		    // Tell the SLU about this
+		    retry_timeout.start_ms(1000);
+		    while(1){
+			bool win = slu->recv_break_from_nc();
+			if(win || retry_timeout.reached()){ break; }
+		    }
 		    protocol_state = NCPS_MAIN;
 		    break;
 
@@ -239,6 +272,66 @@ void netcon_c::worker(unsigned instance){
 		    protocol_state = NCPS_MAIN;
 		    break;
 
+		case TN_OPT_X3_PAD:
+		    // Negotiate X.3-PAD. We aren't the head maid.
+		    res = write(fd,&netcon_tn_dont_pad,3);
+		    if(res != 3){
+			ERROR("write(): %s",strerror(errno));
+			close(fd);
+			fd = 0;
+			ctl->on_netcon_closed(this);
+		    }
+		    protocol_state = NCPS_MAIN;
+		    break;
+
+		case TN_OPT_NAWS:
+		    // Negotiate About Window Size? We didn't ask for it!
+		    res = write(fd,&netcon_tn_dont_naws,3);
+		    if(res != 3){
+			ERROR("write(): %s",strerror(errno));
+			close(fd);
+			fd = 0;
+			ctl->on_netcon_closed(this);
+		    }
+		    protocol_state = NCPS_MAIN;
+		    break;
+
+		case TN_OPT_TERMINAL_SPEED:
+		    // Negotiate about terminal speed? Maybe we'll do this later.
+		    res = write(fd,&netcon_tn_dont_speed,3);
+		    if(res != 3){
+			ERROR("write(): %s",strerror(errno));
+			close(fd);
+			fd = 0;
+			ctl->on_netcon_closed(this);
+		    }
+		    protocol_state = NCPS_MAIN;
+		    break;
+
+		case TN_OPT_ENVIRONMENT:
+		    // Environment. We aren't UNIX.
+		    res = write(fd,&netcon_tn_dont_eo,3);
+		    if(res != 3){
+			ERROR("write(): %s",strerror(errno));
+			close(fd);
+			fd = 0;
+			ctl->on_netcon_closed(this);
+		    }
+		    protocol_state = NCPS_MAIN;
+		    break;
+
+		case TN_OPT_NEO:
+		    // New Environment Option.
+		    res = write(fd,&netcon_tn_dont_neo,3);
+		    if(res != 3){
+			ERROR("write(): %s",strerror(errno));
+			close(fd);
+			fd = 0;
+			ctl->on_netcon_closed(this);
+		    }
+		    protocol_state = NCPS_MAIN;
+		    break;
+
 		default:
 		    ERROR("Unhandled telnet option 0x%.2X (%.3o) after WILL",incoming_byte,incoming_byte);
 		    close(fd);
@@ -260,6 +353,25 @@ void netcon_c::worker(unsigned instance){
 	    res = read(fd,(char *)&incoming_byte,1);
 	    if(res == 1){
 		switch(incoming_byte){
+
+		case TN_OPT_X3_PAD:
+		    // ナマチチですって！
+		    protocol_state = NCPS_MAIN;
+		    break;
+
+		case TN_OPT_NAWS:
+		    // Good, we don't want to.
+		    protocol_state = NCPS_MAIN;
+		    break;
+
+		case TN_OPT_TERMINAL_SPEED:
+		    protocol_state = NCPS_MAIN;
+		    break;
+
+		case TN_OPT_ENVIRONMENT:
+		case TN_OPT_NEO:
+		    protocol_state = NCPS_MAIN;
+		    break;
 
 		default:
 		    ERROR("Unhandled telnet option 0x%.2X (%.3o) after WILL NOT",incoming_byte,incoming_byte);
@@ -292,12 +404,13 @@ void netcon_c::worker(unsigned instance){
 		case TN_OPT_TIMING_MARK:
 		    // Send IAC WILL TIMING-MARK, see https://www.rfc-editor.org/rfc/rfc860.html
 		    res = write(fd,&netcon_tn_timing_mark,3);
-		    if(res != NCTN_GREETING_LENGTH){
+		    if(res != 3){
 			ERROR("write(): %s",strerror(errno));
 			close(fd);
 			fd = 0;
 			ctl->on_netcon_closed(this);
 		    }
+		    protocol_state = NCPS_MAIN;
 		    break;
 
 		default:
@@ -482,7 +595,7 @@ void netcom_c::worker(unsigned instance){
 		while(itr != muxes.end()){
 		    line = (*itr)->find_free_line();
 		    if(line >= 0){
-			INFO("Found free line @%d",line);
+			INFO("Found free line %d on %s",line,(*itr)->get_name().c_str());
 			break;
 		    }
 		    ++itr;

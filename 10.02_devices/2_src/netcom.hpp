@@ -47,10 +47,15 @@
  * TELNET OPTION CODES *
  ***********************/
 
-#define TN_OPT_LINE_MODE 0x22
-#define TN_OPT_TIMING_MARK 0x06
-#define TN_OPT_SUPPRESS_GO_AHEAD 0x03
 #define TN_OPT_ECHO 0x01
+#define TN_OPT_SUPPRESS_GO_AHEAD 0x03
+#define TN_OPT_TIMING_MARK 0x06
+#define TN_OPT_X3_PAD 0x18
+#define TN_OPT_NAWS 0x1F
+#define TN_OPT_TERMINAL_SPEED 0x20
+#define TN_OPT_LINE_MODE 0x22
+#define TN_OPT_ENVIRONMENT 0x24
+#define TN_OPT_NEO 0x27
 
 /**************************
  * NETCOM PROTOCOL STATES *
@@ -76,6 +81,7 @@ public:
     virtual netcom_line_c *get_slu(int ln) = 0;
     virtual bool seize_line(int ln,netcon_c *conn) = 0;
     virtual void release_line(int ln) = 0;
+    virtual std::string get_name() = 0;
 };
 
 /****************************
@@ -85,6 +91,8 @@ public:
 class netcom_line_c {
 public:
     virtual bool recv_data_from_nc(uint8_t data) = 0;
+    virtual bool recv_break_from_nc() = 0;
+    virtual std::string get_name() = 0;
 };
 
 /*********************
@@ -108,6 +116,7 @@ public:
     ~netcon_c();
 
     bool transmit_data(uint8_t data);
+    bool transmit_break();
     bool on_param_changed(parameter_c *param) override;
     void on_power_changed(signal_edge_enum aclo_edge,signal_edge_enum dclo_edge) override;
     void on_init_changed(void) override;
