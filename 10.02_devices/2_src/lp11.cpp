@@ -104,12 +104,16 @@ void lp11_c::on_after_register_access(qunibusdevice_register_t *device_reg, uint
 	    // If INTR_ENB is being set and RDY or ERROR is up, interrupt.
 	    if((new_val&0100) != 0){
 		if(LPCS.INTR_ENB == 0 && (LPCS.RDY != 0 || LPCS.ERROR != 0)){
-		    qunibusadapter->INTR(intr_request,NULL,0);
+		    LPCS.INTR_ENB = 1;
+		    qunibusadapter->INTR(intr_request,UBR[0],LPCS.word);
+		}else{
+		    LPCS.INTR_ENB = 1;
+		    set_register_dati_value(UBR[0],LPCS.word,"update_LPCS");
 		}
-		LPCS.INTR_ENB = 1;
 	    }else{
 		LPCS.INTR_ENB = 0;
 		qunibusadapter->cancel_INTR(intr_request);
+		set_register_dati_value(UBR[0],LPCS.word,"update_LPCS");
 	    }
 	    break;
 
@@ -117,7 +121,6 @@ void lp11_c::on_after_register_access(qunibusdevice_register_t *device_reg, uint
 	    // Ignore
 	    break;
 	}
-	set_register_dati_value(UBR[0],LPCS.word,"update_LPCS");
 	break;
 
     case 1: // DB
@@ -136,7 +139,10 @@ void lp11_c::on_after_register_access(qunibusdevice_register_t *device_reg, uint
 		pthread_cond_signal(&on_after_register_access_cond);
 		LPDB.word = new_val;
 		LPCS.RDY = 0;
+		set_register_dati_value(UBR[0],LPCS.word,"update_LPCS");
 		pthread_mutex_unlock(&on_after_register_access_mutex);
+	    }else{
+		INFO("Character lost due to error or not ready");
 	    }
 	    break;
 
@@ -179,16 +185,41 @@ void lp11_c::worker(unsigned instance){
 	}else{
 	    // Character to send is in LPDB.
 	    if(fd != NULL){
+		// Store it
 		buffer[buffer_idx] = LPDB.DATA;
-		if(buffer_idx+1 == 1022 || buffer[buffer_idx] < 040 || buffer[buffer_idx] == 0177){
-		    // Is the last character a carriage return?
-		    if(buffer[buffer_idx] == 015){
-			// Yes, append a linefeed.
+		// Dispatch to handle it
+		int send_buffer = 0;
+		switch(LPDB.DATA){
+
+		case 012: // Newline
+		    // Pass through
+		    send_buffer = 1;
+		    break;
+
+		case 015: // Carriage Return
+		    column_idx = 0; // Reset column
+		    send_buffer = 1;
+		    break;
+
+		default: // Anything printable
+		    column_idx++; // Advance column
+		    // At column 132?
+		    if(column_idx == 132){
+			// Add CR and LF
+			buffer_idx++;
+			buffer[buffer_idx] = 015;
 			buffer_idx++;
 			buffer[buffer_idx] = 012;
+			send_buffer = 1;
 		    }
-		    size_t rv = fwrite(&buffer,1,buffer_idx+1,fd);
-		    if(rv != buffer_idx+1){
+		    break;
+		}
+		buffer_idx++; // Advance buffer
+		// Send it?
+		if(send_buffer != 0){
+		    // LAUNCH THE DRIFT MISSILE
+		    size_t rv = fwrite(&buffer,1,buffer_idx,fd);
+		    if(rv != buffer_idx){
 			ERROR("Can't write to printer.txt: %s",strerror(errno));
 			fclose(fd);
 			fd = NULL;
@@ -197,8 +228,6 @@ void lp11_c::worker(unsigned instance){
 			fsync(fileno(fd));
 		    }
 		    buffer_idx = 0;
-		}else{
-		    buffer_idx++;
 		}
 	    }
 	    LPDB.word = 0;

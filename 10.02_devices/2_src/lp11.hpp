@@ -36,8 +36,9 @@ private:
 
     qunibusdevice_register_t *UBR[2];
     intr_request_c intr_request = intr_request_c(this);
-    uint8_t buffer[1024];
+    uint8_t buffer[256]; // Just in case
     unsigned buffer_idx;
+    unsigned column_idx;
     FILE *fd;
 
     LP11_CSR LPCS;
