@@ -534,6 +534,25 @@ bool ts11_c::op_complete_strobe(unsigned rcode,int32_t rvalue){
     case TPOP_IMAGE_EOF:
 	switch(Command.Header.Code){
 
+	case 001: // READ
+	    switch(Command.Header.Mode){
+
+	    case 000: // READ NEXT
+		ERROR("OPI raised");
+		XSTAT3.OPI = 1;
+		RBPCR = Data_Buffer_Index;
+		if(!write_message_packet(MSG_PKT_CLASS_END,0)){
+		    FATAL("write_message_packet() blew it?");
+		}
+		TSSR.SC = 1;
+		TSSR.TC = TSSR_TC_UNRECOVERABLE_ERROR;
+		break;
+
+	    default:
+		FATAL("op_complete_strobe(): TPOP_IMAGE_EOF: Unimplemented READ command mode %o",Command.Header.Mode);
+	    }
+	    break;
+
 	case 010: // POSITION
 	    switch(Command.Header.Mode){
 
