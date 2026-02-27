@@ -24,8 +24,14 @@ lp11_c::lp11_c() : qunibusdevice_c(){
     LPCS.word = 0;
     LPDB.word = 0;
     online.value = false;
+    page_width.value = 132;
+    page_length.value = 66;
+    file_name.value = "printer.txt";
+    file_append.value = true;
     fd = NULL;
     buffer_idx = 0;
+    column_idx = 0;
+    line_number = 0;
 
     // Base address, slot number, interrupt vector, BR level
     set_default_bus_params(0777514, 28, 0200, 4);
@@ -58,9 +64,15 @@ bool lp11_c::on_param_changed(parameter_c *param){
 	if(online.new_value == true){
 	    // Going online, open file
 	    if(fd == NULL){
-		fd = fopen("printer.txt","a");
+		if(file_append.value){
+		    fd = fopen(file_name.value.c_str(),"a");
+		}else{
+		    fd = fopen(file_name.value.c_str(),"w");
+		}
 		if(fd == NULL){
-		    ERROR("Can't open printer.txt: %s",strerror(errno));
+		    ERROR("Can't open %s: %s",file_name.value.c_str(),strerror(errno));
+		}else{
+		    file_name.readonly = true;
 		}
 	    }
 	    LPCS.RDY = 1; LPCS.ERROR = 0;
@@ -69,6 +81,7 @@ bool lp11_c::on_param_changed(parameter_c *param){
 	    if(fd != NULL){
 		fclose(fd);
 		fd = NULL;
+		file_name.readonly = false;
 	    }
 	    LPCS.ERROR = 1; LPCS.RDY = 0;
 	}
@@ -194,6 +207,19 @@ void lp11_c::worker(unsigned instance){
 		case 012: // Newline
 		    // Pass through
 		    send_buffer = 1;
+		    // Inc line count
+		    line_number++;
+		    if(line_number >= page_length.value){
+			// A new page just completed
+			line_number = 0;
+		    }
+		    break;
+
+		case 014: // Form Feed
+		    // Pass through
+		    send_buffer = 1;
+		    // Clobber line count
+		    line_number = 0;
 		    break;
 
 		case 015: // Carriage Return
@@ -203,14 +229,20 @@ void lp11_c::worker(unsigned instance){
 
 		default: // Anything printable
 		    column_idx++; // Advance column
-		    // At column 132?
-		    if(column_idx == 132){
+		    // At end of carriage?
+		    if(column_idx == page_width.value){
 			// Add CR and LF
 			buffer_idx++;
 			buffer[buffer_idx] = 015;
 			buffer_idx++;
 			buffer[buffer_idx] = 012;
 			send_buffer = 1;
+			// Inc line count
+			line_number++;
+			if(line_number >= page_length.value){
+			    // A new page just completed
+			    line_number = 0;
+			}
 		    }
 		    break;
 		}
@@ -223,6 +255,7 @@ void lp11_c::worker(unsigned instance){
 			ERROR("Can't write to printer.txt: %s",strerror(errno));
 			fclose(fd);
 			fd = NULL;
+			file_name.readonly = false;
 		    }else{
 			fflush(fd);
 			fsync(fileno(fd));

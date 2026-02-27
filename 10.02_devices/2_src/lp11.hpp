@@ -39,6 +39,7 @@ private:
     uint8_t buffer[256]; // Just in case
     unsigned buffer_idx;
     unsigned column_idx;
+    unsigned line_number;
     FILE *fd;
 
     LP11_CSR LPCS;
@@ -49,6 +50,12 @@ public:
     ~lp11_c();
 
     parameter_bool_c online = parameter_bool_c(this,"online","onl",false,"State of On-Line button");
+    parameter_unsigned_c page_width = parameter_unsigned_c(this,"carriage_width","width",false,"characters","%d",
+							   "Width of the printer carriage, generally 80 or 132",8,10);
+    parameter_unsigned_c page_length = parameter_unsigned_c(this,"page_length","length",false,"lines","%d",
+							    "Length of the forms loaded in the printer, generally 66",8,10);
+    parameter_string_c file_name = parameter_string_c(this,"file_name","file",false,"Path to printer output file/device.");
+    parameter_bool_c file_append = parameter_bool_c(this,"file_append","append",false,"Append or overwrite file on open");
 
     bool on_param_changed(parameter_c *param) override;
     void on_after_register_access(qunibusdevice_register_t *device_reg, uint8_t unibus_control, DATO_ACCESS access)
